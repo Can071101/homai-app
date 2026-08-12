@@ -1,1 +1,48 @@
+name: 打包好麦出货系统
 
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v6
+
+      - name: 安装 Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 安装 Flutter SDK (预装，避免 flet 交互提问)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: 验证 Flutter 安装
+        run: flutter --version
+
+      - name: 安装 Flet
+        run: pip install flet
+
+      - name: 配置 Flet 使用已有的 Flutter
+        run: |
+          # 将 Flutter 路径暴露给后续步骤
+          echo "FLUTTER_ROOT=$FLUTTER_HOME" >> $GITHUB_ENV
+          echo "PATH=$FLUTTER_HOME/bin:$PATH" >> $GITHUB_ENV
+
+      - name: 开始打包 APK (使用 --flutter-sdk 指定路径)
+        run: flet build apk --flutter-sdk $FLUTTER_HOME --verbose
+
+      - name: 确认 APK 是否生成
+        run: ls -la build/apk/ || true
+
+      - name: 上传安装包
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: 好麦出货系统-APP
+          path: build/apk/**/*.apk
